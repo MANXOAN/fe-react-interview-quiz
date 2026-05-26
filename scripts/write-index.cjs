@@ -1,0 +1,9 @@
+const fs = require('node:fs');
+
+const html = Buffer.from(
+  'PCFkb2N0eXBlIGh0bWw+CjxodG1sIGxhbmc9InZpIj4KICA8aGVhZD4KICAgIDxtZXRhIGNoYXJzZXQ9IlVURi04IiAvPgogICAgPG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCwgaW5pdGlhbC1zY2FsZT0xLjAiIC8+CiAgICA8bWV0YSBuYW1lPSJkZXNjcmlwdGlvbiIgY29udGVudD0iRkUgUmVhY3QgaW50ZXJ2aWV3IHF1aXogZm9yIDIuNSsgeWVhcnMuIiAvPgogICAgPHRpdGxlPkZFIFJlYWN0IEludGVydmlldyBRdWl6PC90aXRsZT4KICA8L2hlYWQ+CiAgPGJvZHk+CiAgICA8ZGl2IGlkPSJyb290Ij48L2Rpdj4KICAgIDxzY3JpcHQgdHlwZT0ibW9kdWxlIiBzcmM9Ii9zcmMvbWFpbi5qcyI+PC9zY3JpcHQ+CiAgPC9ib2R5Pgo8L2h0bWw+Cg==',
+  'base64'
+).toString('utf8');
+
+fs.writeFileSync('index.html', html);
+console.log('index.html generated');
