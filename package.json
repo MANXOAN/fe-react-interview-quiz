@@ -7,7 +7,7 @@
     "predev": "node scripts/write-index.cjs",
     "dev": "vite",
     "prebuild": "node scripts/write-index.cjs",
-    "build": "vite build",
+    "build": "vite build --base=./",
     "preview": "vite preview"
   },
   "dependencies": {
