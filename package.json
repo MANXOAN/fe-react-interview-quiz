@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node scripts/write-index.cjs",
     "dev": "vite",
+    "prebuild": "node scripts/write-index.cjs",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -12,8 +14,7 @@
     "@vitejs/plugin-react": "latest",
     "vite": "latest",
     "react": "latest",
-    "react-dom": "latest",
-    "lucide-react": "latest"
+    "react-dom": "latest"
   },
   "devDependencies": {}
 }
