@@ -1,235 +1,798 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
-const STORAGE_KEY = 'fe-react-interview-quiz-progress-v1';
+const STORAGE_KEY = 'fe-react-interview-quiz-progress-recruiter-v1';
 
-const AREAS = [
-  ['all', 'Tất cả'],
-  ['html-css', 'HTML/CSS'],
-  ['js', 'JavaScript / ES6+ / Event Loop'],
-  ['ts', 'TypeScript'],
-  ['react', 'React'],
-  ['state', 'State / Redux / Zustand'],
-  ['api', 'Axios / TanStack / Form / Zod'],
-  ['rendering', 'SPA / SSR / SSG / ISR'],
-  ['testing-build', 'Testing / Git / Vite / Security'],
+const QUESTIONS = [
+  {
+    id: 1,
+    area: 'HTML/CSS',
+    topic: 'Semantic HTML',
+    question: 'Bạn nhận một landing page đang dùng toàn div/span cho header, menu, nội dung bài viết và footer. Khi review code, bạn sẽ góp ý gì?',
+    options: ['Giữ nguyên vì div dễ style nhất', 'Đổi sang thẻ semantic như header, nav, main, article, section, footer nếu đúng ngữ nghĩa', 'Thêm nhiều class name là đủ cho SEO', 'Chuyển toàn bộ sang table để layout chắc hơn'],
+    answer: 1,
+    explanation: 'Nhà tuyển dụng muốn nghe bạn hiểu semantic HTML không phải học thuộc tên thẻ, mà biết dùng đúng ngữ nghĩa để cải thiện accessibility, SEO và maintainability.',
+    example: '<main><article><h1>...</h1></article></main>',
+  },
+  {
+    id: 2,
+    area: 'HTML/CSS',
+    topic: 'Form Accessibility',
+    question: 'Form login có input email/password chỉ dùng placeholder, không có label. Vấn đề thực tế là gì?',
+    options: ['Không vấn đề gì vì placeholder thay label tốt hơn', 'Screen reader và người dùng khó xác định tên field; nên dùng label liên kết htmlFor/id', 'Chỉ cần đổi màu placeholder', 'Dùng div giả input để custom đẹp hơn'],
+    answer: 1,
+    explanation: 'Placeholder không thay thế label. Label giúp click focus đúng input và hỗ trợ công nghệ trợ năng.',
+    example: '<label htmlFor="email">Email</label><input id="email" />',
+  },
+  {
+    id: 3,
+    area: 'HTML/CSS',
+    topic: 'Button in form',
+    question: 'Trong form có nút “Huỷ” nhưng dev viết <button>Huỷ</button>. Bug nào có thể xảy ra?',
+    options: ['Không có bug vì button mặc định là button', 'Nút Huỷ có thể submit form vì button trong form mặc định type="submit"', 'Button không render trong form', 'Chỉ ảnh hưởng CSS'],
+    answer: 1,
+    explanation: 'Câu này kiểm tra kinh nghiệm thực tế. Trong form, button mặc định là submit nếu không khai báo type.',
+    example: '<button type="button">Huỷ</button><button type="submit">Lưu</button>',
+  },
+  {
+    id: 4,
+    area: 'HTML/CSS',
+    topic: 'Flex vs Grid',
+    question: 'Bạn làm dashboard có sidebar, header và content area. Khi nào chọn Grid, khi nào chọn Flex?',
+    options: ['Grid cho layout tổng thể 2 chiều, Flex cho layout nhỏ 1 chiều như navbar/actions', 'Luôn dùng Flex cho mọi layout', 'Luôn dùng absolute để dễ căn', 'Grid chỉ dùng cho mobile'],
+    answer: 0,
+    explanation: 'Nhà tuyển dụng muốn nghe khả năng chọn công cụ theo bài toán: Grid cho layout hàng/cột, Flex cho sắp xếp một chiều.',
+    example: 'Page shell dùng grid; header actions dùng flex.',
+  },
+  {
+    id: 5,
+    area: 'HTML/CSS',
+    topic: 'Z-index / Stacking context',
+    question: 'Modal z-index 9999 nhưng vẫn bị header đè. Bạn debug theo hướng nào?',
+    options: ['Tăng lên 99999999 là xong', 'Kiểm tra stacking context của ancestor, overflow, transform/opacity/position và cân nhắc render modal bằng portal', 'Đổi modal thành inline-block', 'Xóa CSS reset'],
+    answer: 1,
+    explanation: 'Đây là case phỏng vấn rất thực tế. z-index chỉ so sánh trong cùng stacking context, không phải cứ số lớn là thắng.',
+    example: 'createPortal(<Modal />, document.body)',
+  },
+  {
+    id: 6,
+    area: 'HTML/CSS',
+    topic: 'Responsive',
+    question: 'Một card grid bị vỡ trên mobile vì width cố định 320px và margin hard-code. Bạn xử lý thế nào?',
+    options: ['Giữ fixed width vì desktop đẹp', 'Dùng layout responsive như repeat(auto-fit, minmax(...)), clamp/rem và breakpoint hợp lý', 'Dùng zoom: 80%', 'Ẩn bớt nội dung bằng display:none mọi nơi'],
+    answer: 1,
+    explanation: 'Câu này kiểm tra responsive thật, không phải chỉ biết media query. Cần layout linh hoạt trước, breakpoint sau.',
+    example: 'grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));',
+  },
+  {
+    id: 7,
+    area: 'JavaScript',
+    topic: 'Truthy/Falsy',
+    question: 'API trả total = 0 nhưng UI lại hiện “Không có dữ liệu tổng”. Code đang if(total). Bạn sửa ra sao?',
+    options: ['Giữ nguyên vì 0 là truthy', 'Check total !== null && total !== undefined hoặc total != null tuỳ convention', 'Ép Boolean(total)', 'Dùng total || 1'],
+    answer: 1,
+    explanation: '0 là falsy nhưng vẫn là giá trị hợp lệ. Đây là lỗi hay gặp với count, page, discount, quantity.',
+    example: 'if (total != null) renderTotal(total);',
+  },
+  {
+    id: 8,
+    area: 'JavaScript',
+    topic: 'Nullish coalescing',
+    question: 'discountPercent = 0 là hợp lệ. Dòng nào tránh fallback sai?',
+    options: ['const discount = discountPercent || 10', 'const discount = discountPercent ?? 10', 'const discount = discountPercent && 10', 'const discount = !discountPercent ? 10 : 0'],
+    answer: 1,
+    explanation: '|| fallback với mọi falsy, còn ?? chỉ fallback khi null/undefined.',
+    example: '0 ?? 10 // 0; 0 || 10 // 10',
+  },
+  {
+    id: 9,
+    area: 'JavaScript',
+    topic: 'Array mutation',
+    question: 'Bạn sort danh sách users lấy từ React state. Cách nào an toàn?',
+    options: ['users.sort(...) rồi setUsers(users)', 'const sorted = [...users].sort(...)', 'users.splice(0).sort(...)', 'Không thể sort trong React'],
+    answer: 1,
+    explanation: 'sort mutate array gốc. Với state, cần tạo reference mới để tránh side effect và render sai.',
+    example: 'const sorted = [...users].sort((a,b)=>a.name.localeCompare(b.name));',
+  },
+  {
+    id: 10,
+    area: 'JavaScript',
+    topic: 'Event loop',
+    question: 'Đoạn code log A, setTimeout B, Promise.then C, log D. Thứ tự đúng và vì sao?',
+    options: ['A B C D vì timeout 0 chạy ngay', 'A D C B vì sync trước, microtask trước macrotask', 'A C D B vì Promise chặn sync', 'C A D B vì Promise ưu tiên nhất'],
+    answer: 1,
+    explanation: 'Sync chạy trước. Promise.then là microtask, setTimeout là macrotask/task.',
+    example: "console.log('A'); setTimeout(()=>console.log('B')); Promise.resolve().then(()=>console.log('C')); console.log('D');",
+  },
+  {
+    id: 11,
+    area: 'JavaScript',
+    topic: 'Promise.all vs allSettled',
+    question: 'Trang home có 3 block độc lập: banner, news, recommendations. Một block fail vẫn muốn hiện block còn lại. Dùng gì?',
+    options: ['Promise.all', 'Promise.allSettled', 'Promise.race', 'forEach async'],
+    answer: 1,
+    explanation: 'Promise.all reject ngay khi một promise fail. allSettled phù hợp khi các block độc lập và lỗi từng phần được chấp nhận.',
+    example: 'const results = await Promise.allSettled([banner(), news(), recs()]);',
+  },
+  {
+    id: 12,
+    area: 'JavaScript',
+    topic: 'Race condition',
+    question: 'Search API: user gõ “a” rồi “abc”, response “a” về sau và ghi đè kết quả mới. Bạn xử lý thế nào?',
+    options: ['Không xử lý vì API tự đúng', 'Debounce input và cancel/ignore request cũ bằng AbortController hoặc requestId', 'Gọi thêm API lần nữa', 'Lưu kết quả vào CSS'],
+    answer: 1,
+    explanation: 'Đây là case thực chiến. Cần tránh response cũ update state sau response mới.',
+    example: 'useEffect(() => { const c = new AbortController(); fetch(url,{signal:c.signal}); return () => c.abort(); }, [keyword]);',
+  },
+  {
+    id: 13,
+    area: 'JavaScript',
+    topic: 'Closure',
+    question: 'setInterval trong useEffect luôn đọc count cũ. Khái niệm JS nào liên quan và cách xử lý?',
+    options: ['Prototype; dùng class', 'Stale closure; dùng dependency đúng, functional update hoặc ref tuỳ case', 'Hoisting; đổi var thành let là xong mọi case', 'CSS cascade'],
+    answer: 1,
+    explanation: 'Callback giữ giá trị từ render cũ. Nhà tuyển dụng hay hỏi để xem bạn hiểu JS closure trong React.',
+    example: 'setCount(prev => prev + 1)',
+  },
+  {
+    id: 14,
+    area: 'JavaScript',
+    topic: 'Map/Set',
+    question: 'Bạn cần lưu selectedIds và kiểm tra một id đã chọn chưa rất nhiều lần. Cấu trúc nào hợp lý?',
+    options: ['Array và includes mọi nơi', 'Set để check membership nhanh và giữ unique', 'String nối bằng dấu phẩy', 'Object DOM'],
+    answer: 1,
+    explanation: 'Set phù hợp unique values và has/delete/add rõ nghĩa. Array vẫn dùng được nhưng kém rõ và có thể chậm hơn khi lớn.',
+    example: 'const selected = new Set(ids); selected.has(userId);',
+  },
+  {
+    id: 15,
+    area: 'TypeScript',
+    topic: 'unknown vs any',
+    question: 'API response type là unknown. Trước khi dùng data.name, bạn làm gì?',
+    options: ['Ép data as any rồi dùng luôn', 'Narrow bằng type guard hoặc validate bằng Zod/schema', 'Tắt strict mode', 'Dùng // @ts-ignore'],
+    answer: 1,
+    explanation: 'TS không validate runtime. unknown buộc bạn kiểm tra trước khi dùng, an toàn hơn any.',
+    example: 'if (isUser(data)) console.log(data.name);',
+  },
+  {
+    id: 16,
+    area: 'TypeScript',
+    topic: 'Generics',
+    question: 'Bạn viết hàm getById dùng cho User, Product, Order đều có id. Type nào tốt?',
+    options: ['function getById(items:any[], id:any):any', 'function getById<T extends { id: string | number }>(items:T[], id:T["id"]):T|undefined', 'function getById(items:string[], id:string):string', 'Không type được'],
+    answer: 1,
+    explanation: 'Generic constraint giữ type cụ thể của entity nhưng đảm bảo có id.',
+    example: 'const user = getById(users, "u1"); // User | undefined',
+  },
+  {
+    id: 17,
+    area: 'TypeScript',
+    topic: 'Utility types',
+    question: 'UpdateUserPayload không gửi id và mọi field còn lại optional. Type nào đúng?',
+    options: ['Pick<User, "id">', 'Partial<Omit<User, "id">>', 'Record<User, string>', 'Required<User>'],
+    answer: 1,
+    explanation: 'Omit bỏ id, Partial làm các field còn lại optional. Đây là pattern DTO rất hay gặp.',
+    example: 'type UpdateUserPayload = Partial<Omit<User, "id">>;',
+  },
+  {
+    id: 18,
+    area: 'TypeScript',
+    topic: 'Discriminated union',
+    question: 'Vì sao state dạng {status:"loading"|"success"|"error"} tốt hơn nhiều boolean loading/success/error?',
+    options: ['Vì code dài hơn', 'Tránh trạng thái mâu thuẫn và giúp TS narrow đúng từng case', 'Vì boolean không dùng được trong React', 'Vì React Query bắt buộc'],
+    answer: 1,
+    explanation: 'Discriminated union mô hình hoá các trạng thái hợp lệ, tránh vừa loading vừa error vừa có data.',
+    example: 'type ApiState = {status:"loading"} | {status:"success", data:User[]} | {status:"error", message:string};',
+  },
+  {
+    id: 19,
+    area: 'TypeScript',
+    topic: 'keyof / indexed access',
+    question: 'Hàm updateField(obj, key, value) nên type thế nào để value đúng theo key?',
+    options: ['key:string, value:any', 'function updateField<T,K extends keyof T>(obj:T,key:K,value:T[K])', 'key:keyof T, value:string', 'Không làm được'],
+    answer: 1,
+    explanation: 'K extends keyof T đảm bảo key hợp lệ, T[K] đảm bảo value khớp type của field.',
+    example: 'updateField(user, "age", 20); updateField(user, "age", "20") // lỗi',
+  },
+  {
+    id: 20,
+    area: 'TypeScript',
+    topic: 'React types',
+    question: 'children của Card component nên type gì trong đa số trường hợp?',
+    options: ['string', 'JSX.Element luôn luôn', 'React.ReactNode', 'any cho nhanh'],
+    answer: 2,
+    explanation: 'children có thể là string, number, null, element, fragment, array. ReactNode bao quát hơn JSX.Element.',
+    example: 'type CardProps = { children: React.ReactNode };',
+  },
+  {
+    id: 21,
+    area: 'React',
+    topic: 'Derived state',
+    question: 'fullName tính từ firstName và lastName. Cách nào đúng tinh thần React hơn?',
+    options: ['Lưu fullName vào state rồi sync bằng useEffect', 'Tính trực tiếp trong render hoặc useMemo nếu tính nặng', 'Gọi API để lấy fullName', 'Lưu vào localStorage'],
+    answer: 1,
+    explanation: 'Nếu dữ liệu tính được từ props/state hiện tại thì không cần state riêng. Tránh duplicate state và render thừa.',
+    example: 'const fullName = `${firstName} ${lastName}`;',
+  },
+  {
+    id: 22,
+    area: 'React',
+    topic: 'State immutability',
+    question: 'Bạn cần cập nhật user.address.city trong state nested. Cách nào đúng?',
+    options: ['user.address.city="HN"; setUser(user)', 'setUser(prev => ({...prev, address:{...prev.address, city:"HN"}}))', 'setUser(user.address.city)', 'Dùng document.querySelector'],
+    answer: 1,
+    explanation: 'React dựa vào reference để nhận biết thay đổi. Nested update cần copy từng cấp bị đổi.',
+    example: 'setUser(prev => ({ ...prev, address: { ...prev.address, city: "HN" } }));',
+  },
+  {
+    id: 23,
+    area: 'React',
+    topic: 'Keys',
+    question: 'Todo list có input edit trong từng row. Dùng index làm key, xoá row đầu thì input nhảy sai. Vì sao?',
+    options: ['Input không dùng được trong list', 'React reuse component theo index mới nên local state/input gắn nhầm item', 'CSS Grid lỗi', 'TypeScript lỗi'],
+    answer: 1,
+    explanation: 'Key là identity của item. Index không ổn định khi insert/delete/sort.',
+    example: 'todos.map(todo => <TodoRow key={todo.id} todo={todo} />)',
+  },
+  {
+    id: 24,
+    area: 'React',
+    topic: 'useEffect',
+    question: 'Effect dùng keyword để gọi API nhưng dependency array để []. Bug thực tế là gì?',
+    options: ['Không bug vì React tự detect', 'Keyword đổi nhưng effect không chạy lại, data stale hoặc gọi API với keyword cũ', 'Component không mount', 'TS tự thêm dependency'],
+    answer: 1,
+    explanation: 'Dependency array phải chứa reactive values dùng trong effect. Thiếu dependency gây stale closure/data.',
+    example: 'useEffect(() => { fetchUsers(keyword); }, [keyword]);',
+  },
+  {
+    id: 25,
+    area: 'React',
+    topic: 'Cleanup',
+    question: 'Component subscribe WebSocket theo roomId. Khi roomId đổi cần làm gì?',
+    options: ['Không cần cleanup', 'Cleanup unsubscribe room cũ trước khi subscribe room mới', 'Reload page', 'Dùng any'],
+    answer: 1,
+    explanation: 'Cleanup tránh duplicate subscription, memory leak và message từ room cũ.',
+    example: 'return () => socket.leave(roomId);',
+  },
+  {
+    id: 26,
+    area: 'React',
+    topic: 'StrictMode',
+    question: 'Dev thấy API trong useEffect bị gọi 2 lần khi bật StrictMode. Bạn giải thích thế nào?',
+    options: ['React production bị lỗi', 'StrictMode dev cố tình chạy setup/cleanup thêm để phát hiện side effect không an toàn', 'Do CSS load 2 lần', 'Do TypeScript build 2 lần'],
+    answer: 1,
+    explanation: 'Không nên hack bỏ StrictMode; cần effect idempotent, cleanup/cancel request hoặc dùng data fetching library đúng.',
+    example: 'Dev-only behavior; production không double invoke theo cách đó.',
+  },
+  {
+    id: 27,
+    area: 'React',
+    topic: 'Memoization',
+    question: 'Child bọc React.memo nhưng vẫn re-render vì parent truyền filters={{keyword}}. Lý do?',
+    options: ['React.memo không hoạt động', 'Object inline tạo reference mới mỗi render nên shallow compare thấy đổi', 'Keyword là string nên lỗi', 'Do CSS class'],
+    answer: 1,
+    explanation: 'React.memo shallow compare. Object/function inline làm props đổi về reference.',
+    example: 'const filters = useMemo(() => ({ keyword }), [keyword]);',
+  },
+  {
+    id: 28,
+    area: 'React',
+    topic: 'useCallback',
+    question: 'Khi nào useCallback thật sự có ích?',
+    options: ['Bọc mọi function cho chắc', 'Khi cần giữ function reference stable, ví dụ truyền xuống child memo hoặc dependency hook khác', 'Để function chạy nhanh hơn bên trong', 'Để tránh mọi API call'],
+    answer: 1,
+    explanation: 'useCallback cache reference, không làm logic trong function tự nhanh hơn.',
+    example: 'const onDelete = useCallback((id) => remove(id), [remove]);',
+  },
+  {
+    id: 29,
+    area: 'React',
+    topic: 'Performance',
+    question: 'Table 10.000 records bị lag. Bạn đề xuất gì trước khi thêm useMemo khắp nơi?',
+    options: ['Render hết và thêm CSS', 'Pagination/virtualization, debounce filter, profiler đo điểm nghẽn, memo row nếu cần', 'Đổi tất cả sang any', 'Dùng index key'],
+    answer: 1,
+    explanation: 'Cần giảm số DOM và đo performance thực tế, không tối ưu mù.',
+    example: 'react-window/react-virtualized hoặc pagination server-side.',
+  },
+  {
+    id: 30,
+    area: 'React',
+    topic: 'Controlled vs uncontrolled',
+    question: 'Form search nhỏ cần validate realtime keyword. Controlled hay uncontrolled hợp hơn?',
+    options: ['Controlled thường hợp vì value cần sync state và validate realtime', 'Uncontrolled bắt buộc mọi form', 'Dùng Redux cho từng ký tự', 'Dùng div thay input'],
+    answer: 0,
+    explanation: 'Controlled phù hợp form nhỏ hoặc field cần phản hồi ngay. Form rất lớn có thể dùng RHF/uncontrolled để giảm re-render.',
+    example: '<input value={keyword} onChange={e=>setKeyword(e.currentTarget.value)} />',
+  },
+  {
+    id: 31,
+    area: 'State Management',
+    topic: 'State placement',
+    question: 'Khi quyết định state đặt ở đâu, nguyên tắc đầu tiên là gì?',
+    options: ['Đưa tất cả lên global store', 'Đặt gần nơi dùng nhất, chỉ lift/global khi có nhu cầu chia sẻ thật', 'Đưa hết vào localStorage', 'Đưa hết vào URL'],
+    answer: 1,
+    explanation: 'Mid-level cần phân loại local, lifted, URL, client global, server state thay vì dùng một store cho mọi thứ.',
+    example: 'Modal local trong page; auth user global; product list server state.',
+  },
+  {
+    id: 32,
+    area: 'State Management',
+    topic: 'Server state vs client state',
+    question: 'Product list từ API, sidebarOpen, theme, current page filter. Bạn phân loại state thế nào?',
+    options: ['Tất cả Redux', 'Product list: server state; sidebar/theme: client state; filter/page: URL state nếu cần share/refresh', 'Tất cả localStorage', 'Tất cả useRef'],
+    answer: 1,
+    explanation: 'Câu này nhà tuyển dụng rất hay hỏi để xem bạn chọn công cụ theo ownership/phạm vi.',
+    example: 'TanStack Query cho products; Zustand/Context cho theme; searchParams cho page/filter.',
+  },
+  {
+    id: 33,
+    area: 'State Management',
+    topic: 'Context performance',
+    question: 'Một Context chứa user, theme, notificationCount làm nhiều component re-render. Cách xử lý?',
+    options: ['Tách context theo domain, memoize value hoặc dùng store có selector khi phù hợp', 'Đưa thêm state vào context', 'Tắt StrictMode', 'Dùng index key'],
+    answer: 0,
+    explanation: 'Context không tự tối ưu re-render. Provider value đổi làm consumer phụ thuộc update.',
+    example: 'AuthContext riêng, ThemeContext riêng; useMemo cho value.',
+  },
+  {
+    id: 34,
+    area: 'State Management',
+    topic: 'Redux Toolkit',
+    question: 'Trong Redux Toolkit, vì sao reducer có thể viết state.value++?',
+    options: ['Vì Redux giờ mutate thật', 'Vì RTK dùng Immer: viết như mutate draft nhưng tạo immutable update phía sau', 'Vì React không cần immutable', 'Vì TS bỏ qua'],
+    answer: 1,
+    explanation: 'Hiểu Immer giúp tránh trả lời sai kiểu “Redux Toolkit cho mutate trực tiếp”.',
+    example: 'increment: state => { state.value += 1 }',
+  },
+  {
+    id: 35,
+    area: 'State Management',
+    topic: 'Redux selector',
+    question: 'useSelector(state => ({user: state.user, theme: state.theme})) có thể gây vấn đề gì?',
+    options: ['Object mới mỗi lần, strict equality thấy đổi và re-render nhiều hơn', 'Không đọc được state', 'Redux cấm object', 'Chỉ lỗi CSS'],
+    answer: 0,
+    explanation: 'React-Redux useSelector mặc định so sánh ===. Trả object mới cần shallowEqual hoặc memoized selector/tách selector.',
+    example: 'useSelector(selectUser); useSelector(selectTheme);',
+  },
+  {
+    id: 36,
+    area: 'State Management',
+    topic: 'Zustand',
+    question: 'Với Zustand, vì sao nên dùng useStore(s => s.user) thay vì useStore()?',
+    options: ['Để component chỉ subscribe slice cần dùng, giảm re-render không liên quan', 'Vì useStore() không chạy', 'Để gọi API tự động', 'Để thay TS'],
+    answer: 0,
+    explanation: 'Selector là điểm quan trọng khi store lớn hơn. Lấy cả store dễ re-render khi bất kỳ field nào đổi.',
+    example: 'const userName = useAuthStore(s => s.user?.name);',
+  },
+  {
+    id: 37,
+    area: 'State Management',
+    topic: 'Logout cleanup',
+    question: 'Khi logout, ngoài xoá token còn cần làm gì trong app có Query + global store?',
+    options: ['Chỉ navigate login là đủ', 'Reset auth/permission/cart/modal store và clear query cache liên quan user', 'Đổi theme', 'Không cần làm gì'],
+    answer: 1,
+    explanation: 'Nếu không reset, user sau có thể thấy dữ liệu/cache của user trước.',
+    example: 'queryClient.clear(); authStore.reset(); cartStore.reset();',
+  },
+  {
+    id: 38,
+    area: 'API / Data',
+    topic: 'Axios architecture',
+    question: 'Vì sao không nên axios.get trực tiếp rải rác trong component?',
+    options: ['Khó quản lý baseURL/token/error/refresh/retry và component lẫn data logic', 'Axios không chạy trong component', 'React cấm async', 'TS không import được axios'],
+    answer: 0,
+    explanation: 'Nên có axiosClient/service/query hook để tách UI khỏi data access và dễ test.',
+    example: 'userService.getUsers(params) + useUsersQuery(params)',
+  },
+  {
+    id: 39,
+    area: 'API / Data',
+    topic: 'Axios 401 refresh',
+    question: 'Nhiều request cùng bị 401 một lúc. Refresh token flow cần chú ý gì?',
+    options: ['Mỗi request tự refresh token riêng càng tốt', 'Dùng isRefreshing/queue để refresh một lần rồi retry requests pending, tránh loop bằng _retry', 'Bỏ qua 401', 'Clear storage trước khi refresh'],
+    answer: 1,
+    explanation: 'Nếu refresh 10 lần cùng lúc dễ race condition. Đây là case mid-level rất thực tế.',
+    example: 'isRefreshing + failedQueue + originalRequest._retry',
+  },
+  {
+    id: 40,
+    area: 'API / Data',
+    topic: 'TanStack Query key',
+    question: 'getUsers({page, keyword, role}) nhưng queryKey chỉ là ["users"]. Bug gì?',
+    options: ['Cache có thể sai giữa các page/filter', 'queryFn không chạy bao giờ', 'Object không được dùng trong key', 'TS không compile'],
+    answer: 0,
+    explanation: 'queryKey phải chứa đủ input ảnh hưởng data. Thiếu key làm UI dùng nhầm cache.',
+    example: '["users", { page, keyword, role }]',
+  },
+  {
+    id: 41,
+    area: 'API / Data',
+    topic: 'TanStack Query staleTime',
+    question: 'Danh mục tỉnh/thành ít thay đổi. Config TanStack Query nào hợp lý hơn?',
+    options: ['staleTime dài để giảm refetch', 'staleTime 0 bắt buộc mọi data', 'gcTime 0 để nhanh hơn', 'Không được cache'],
+    answer: 0,
+    explanation: 'Data ít đổi nên set staleTime phù hợp. Realtime/nhạy cảm thì staleTime ngắn hơn.',
+    example: 'staleTime: 1000 * 60 * 60',
+  },
+  {
+    id: 42,
+    area: 'API / Data',
+    topic: 'Mutation invalidation',
+    question: 'Sau createUser thành công, danh sách users vẫn cũ. Bạn xử lý thế nào?',
+    options: ['invalidateQueries hoặc setQueryData query liên quan', 'Reload browser luôn', 'Xoá node_modules', 'Đổi key component'],
+    answer: 0,
+    explanation: 'Mutation thay đổi server state; cache liên quan cần invalidate/refetch hoặc update trực tiếp.',
+    example: 'queryClient.invalidateQueries({ queryKey: ["users"] });',
+  },
+  {
+    id: 43,
+    area: 'API / Data',
+    topic: 'Optimistic update',
+    question: 'Delete item optimistic update nhưng API fail. Cần chuẩn bị gì?',
+    options: ['Không cần rollback', 'Snapshot previous data, update tạm, rollback onError, invalidate onSettled', 'Chỉ đổi màu UI', 'Tắt cache'],
+    answer: 1,
+    explanation: 'Optimistic update phải có rollback để UI không nói khác server.',
+    example: 'onMutate → previous; onError → setQueryData(previous); onSettled → invalidate',
+  },
+  {
+    id: 44,
+    area: 'API / Data',
+    topic: 'CORS',
+    question: 'Gọi API bị CORS error. FE xử lý đúng hướng nào?',
+    options: ['Thêm mode:"no-cors" để đọc JSON', 'Kiểm tra server CORS allow origin/method/header/credentials; dev có thể dùng proxy', 'Đổi TypeScript type', 'Dùng React Router'],
+    answer: 1,
+    explanation: 'CORS là browser security policy, chủ yếu cần server trả header đúng. no-cors không giúp đọc response JSON.',
+    example: 'Access-Control-Allow-Origin + credentials config đúng.',
+  },
+  {
+    id: 45,
+    area: 'Router',
+    topic: 'URL state',
+    question: 'Màn users có keyword, role, page. Muốn share link và refresh không mất filter, lưu ở đâu?',
+    options: ['Local state', 'URL search params', 'useRef', 'CSS variable'],
+    answer: 1,
+    explanation: 'Filter/sort/page thường là URL state. Local state phù hợp trạng thái tạm như dropdown open.',
+    example: '/users?page=2&role=admin&keyword=nam',
+  },
+  {
+    id: 46,
+    area: 'Router',
+    topic: 'Protected route',
+    question: 'Route /admin cần check role trước khi vào. FE check đủ bảo mật chưa?',
+    options: ['Đủ vì user không sửa được JS', 'FE chỉ là UX; backend/API vẫn phải enforce permission', 'Đủ nếu dùng enum Role', 'Đủ nếu ẩn menu'],
+    answer: 1,
+    explanation: 'FE code nằm ở client. User có thể gọi API trực tiếp. Backend phải check quyền thật.',
+    example: 'UI guard + server authorization middleware.',
+  },
+  {
+    id: 47,
+    area: 'Router',
+    topic: 'SPA fallback',
+    question: 'Deploy React SPA, refresh /dashboard/users bị 404. Nguyên nhân phổ biến?',
+    options: ['Server/static hosting chưa rewrite mọi route về index.html', 'React Router không hỗ trợ route sâu', 'useState lỗi production', 'CSS chưa import'],
+    answer: 0,
+    explanation: 'BrowserRouter route nằm ở client. Server phải fallback index.html cho route không phải asset/API.',
+    example: 'Netlify _redirects: /* /index.html 200',
+  },
+  {
+    id: 48,
+    area: 'Form / Validation',
+    topic: 'React Hook Form',
+    question: 'Form 80 input bị lag do mỗi field controlled bằng useState. Hướng xử lý?',
+    options: ['Đưa mọi field vào Redux', 'Dùng React Hook Form/uncontrolled, tách field, validation mode hợp lý', 'useEffect cho từng field', 'Tắt validation hoàn toàn'],
+    answer: 1,
+    explanation: 'RHF giảm re-render không cần thiết, phù hợp form lớn. Nhưng vẫn cần thiết kế validation tốt.',
+    example: '<input {...register("email")} />',
+  },
+  {
+    id: 49,
+    area: 'Form / Validation',
+    topic: 'Controller',
+    question: 'Khi nào dùng Controller trong React Hook Form?',
+    options: ['Mọi input native đều bắt buộc', 'Khi tích hợp controlled component ngoài như MUI Select/DatePicker/custom input', 'Khi muốn tắt validation', 'Khi tạo route guard'],
+    answer: 1,
+    explanation: 'Native input thường dùng register đủ. Controller dùng cho component không expose ref/onChange theo cách RHF register cần.',
+    example: '<Controller name="date" control={control} render={({field}) => <DatePicker {...field} />} />',
+  },
+  {
+    id: 50,
+    area: 'Form / Validation',
+    topic: 'Zod',
+    question: 'TypeScript đã có type rồi, vì sao vẫn cần Zod cho API/form?',
+    options: ['Vì TS validate runtime', 'Vì TS không validate runtime; Zod kiểm tra dữ liệu thật khi chạy và infer type từ schema', 'Vì Zod thay backend hoàn toàn', 'Vì Zod render UI'],
+    answer: 1,
+    explanation: 'API/form data là runtime input không đáng tin. TS chỉ giúp compile-time.',
+    example: 'const result = UserSchema.safeParse(data);',
+  },
+  {
+    id: 51,
+    area: 'Form / Validation',
+    topic: 'Server errors',
+    question: 'Login API trả lỗi “email không tồn tại”. Với RHF nên đưa lỗi vào đâu?',
+    options: ['Ghi thẳng innerHTML', 'setError("email", { message }) hoặc setError("root", ...) tuỳ lỗi field/global', 'Throw trong render', 'Không hiển thị'],
+    answer: 1,
+    explanation: 'Client validation pass nhưng server có business error. setError giúp UI form hiển thị đúng vị trí.',
+    example: 'setError("email", { message: "Email không tồn tại" });',
+  },
+  {
+    id: 52,
+    area: 'Testing',
+    topic: 'Testing Library',
+    question: 'Test submit button nên query thế nào nếu có thể?',
+    options: ['document.querySelector(".btn-primary")', 'screen.getByRole("button", { name: /submit/i })', 'childNodes[3]', 'getByTestId cho mọi thứ'],
+    answer: 1,
+    explanation: 'Testing Library khuyến khích query giống cách user/screen reader thấy UI, ít phụ thuộc implementation.',
+    example: 'await user.click(screen.getByRole("button", { name: /login/i }));',
+  },
+  {
+    id: 53,
+    area: 'Testing',
+    topic: 'Async UI',
+    question: 'Sau submit login, message thành công xuất hiện sau API. Dùng query nào?',
+    options: ['screen.getByText ngay lập tức', 'await screen.findByText(/thành công/i)', 'queryByText không await', 'innerHTML.includes'],
+    answer: 1,
+    explanation: 'findBy là async, chờ element xuất hiện. getBy phù hợp khi element phải có ngay.',
+    example: 'expect(await screen.findByText(/đăng nhập thành công/i)).toBeInTheDocument();',
+  },
+  {
+    id: 54,
+    area: 'Testing',
+    topic: 'MSW',
+    question: 'Vì sao MSW thường tốt hơn mock axios trực tiếp trong integration test UI?',
+    options: ['Mock ở network layer, test gần hành vi thật và không phụ thuộc HTTP client', 'MSW thay backend production', 'MSW chỉ test CSS', 'MSW không mock error'],
+    answer: 0,
+    explanation: 'Nếu đổi Axios sang fetch, test MSW vẫn gần như giữ nguyên vì mock theo request/response.',
+    example: 'server.use(http.get("/api/users", () => HttpResponse.json(users)));',
+  },
+  {
+    id: 55,
+    area: 'Git / Build',
+    topic: 'Git revert vs reset',
+    question: 'Bạn đã push commit lỗi lên branch chung. Cách an toàn để đảo ngược?',
+    options: ['git revert <commit>', 'git reset --hard rồi force push ngay', 'Xoá repo', 'git stash'],
+    answer: 0,
+    explanation: 'revert tạo commit mới đảo ngược, không rewrite history của team. reset/force push branch chung rất nguy hiểm.',
+    example: 'git revert abc123',
+  },
+  {
+    id: 56,
+    area: 'Git / Build',
+    topic: 'Rebase',
+    question: 'Branch feature cá nhân lệch main. Muốn PR history sạch, bạn thường làm gì?',
+    options: ['git fetch rồi git rebase origin/main trên branch cá nhân', 'Xoá .git', 'Copy file thủ công', 'Force push main'],
+    answer: 0,
+    explanation: 'Rebase phù hợp branch cá nhân để replay commit lên main mới. Không rebase branch shared bừa bãi.',
+    example: 'git fetch origin && git rebase origin/main',
+  },
+  {
+    id: 57,
+    area: 'Git / Build',
+    topic: 'Conflict',
+    question: 'Resolve conflict tốt không phải chỉ bấm accept current/incoming. Bạn cần làm gì?',
+    options: ['Hiểu logic hai bên, giữ đúng requirement, chạy test/build sau khi resolve', 'Luôn chọn current', 'Luôn chọn incoming', 'Xoá file conflict'],
+    answer: 0,
+    explanation: 'Conflict là xung đột logic. Mid-level phải biết đọc context và giữ thay đổi đúng của cả hai phía.',
+    example: 'Resolve → npm test/build → review diff trước khi commit.',
+  },
+  {
+    id: 58,
+    area: 'Git / Build',
+    topic: 'Vite env',
+    question: 'Migrate CRA sang Vite, REACT_APP_API_URL bị undefined. Vì sao?',
+    options: ['Vite dùng import.meta.env và chỉ expose biến prefix VITE_', 'Vite không hỗ trợ env', 'React không đọc env', 'Chỉ production có env'],
+    answer: 0,
+    explanation: 'Đây là lỗi migrate rất hay gặp. Client env của Vite cần prefix VITE_.',
+    example: 'import.meta.env.VITE_API_URL',
+  },
+  {
+    id: 59,
+    area: 'Git / Build',
+    topic: 'Production build',
+    question: 'Dev chạy ổn nhưng production build lỗi import file trên Linux. Nguyên nhân phổ biến?',
+    options: ['Sai hoa/thường path import', 'React không hỗ trợ production', 'useState chỉ chạy local', 'CSS flexbox lỗi'],
+    answer: 0,
+    explanation: 'Windows/macOS có thể không phân biệt hoa thường, Linux thường phân biệt. CI build giúp bắt lỗi này.',
+    example: "import UserCard from './UserCard' nhưng file là userCard.jsx",
+  },
+  {
+    id: 60,
+    area: 'Security',
+    topic: 'XSS',
+    question: 'Backend trả HTML do user nhập, FE muốn render bằng dangerouslySetInnerHTML. Bạn làm gì?',
+    options: ['Render ngay vì TypeScript đã type string', 'Sanitize/whitelist HTML, backend cũng validate, cân nhắc CSP và chỉ render khi thật sự cần', 'Đổi thành any', 'Tin user input'],
+    answer: 1,
+    explanation: 'HTML user-generated có rủi ro XSS. TypeScript không bảo vệ runtime content khỏi script độc hại.',
+    example: 'DOMPurify.sanitize(html) trước khi render.',
+  },
+  {
+    id: 61,
+    area: 'Security',
+    topic: 'Token storage',
+    question: 'Lưu access token trong localStorage có rủi ro gì?',
+    options: ['Nếu bị XSS, script độc hại có thể đọc token', 'localStorage tự mã hoá tuyệt đối', 'Browser không hỗ trợ localStorage', 'Token tự hết hạn sau 1 giây'],
+    answer: 0,
+    explanation: 'Auth storage cần cân nhắc threat model. httpOnly cookie giảm đọc token bằng JS nhưng cần xử lý CSRF/SameSite.',
+    example: 'localStorage tiện nhưng nhạy với XSS.',
+  },
+  {
+    id: 62,
+    area: 'Rendering',
+    topic: 'CSR vs SSR vs SSG',
+    question: 'Nhà tuyển dụng hỏi: “Chọn CSR, SSR, SSG hay ISR cho feature này?” Cách trả lời tốt là gì?',
+    options: ['Luôn chọn SSR vì nghe cao cấp', 'Hỏi/đánh giá SEO, freshness, user-specific data, cache, interactivity, traffic rồi chọn kèm trade-off', 'Luôn chọn CSR vì dễ', 'Framework tự quyết hết'],
+    answer: 1,
+    explanation: 'Mid-level phải biết tiêu chí chọn strategy, không trả lời theo trend.',
+    example: 'Landing ít đổi: SSG; product nhiều trang: ISR; dashboard private: CSR/SSR auth tuỳ UX.',
+  },
+  {
+    id: 63,
+    area: 'Rendering',
+    topic: 'Hydration',
+    question: 'SSR page render Date.now() trực tiếp trong JSX. Rủi ro gì?',
+    options: ['Hydration mismatch vì server time và client time khác nhau', 'Date.now không tồn tại', 'CSS mất tác dụng', 'Tăng SEO tự động'],
+    answer: 0,
+    explanation: 'Hydration cần markup server/client khớp. Giá trị random/time/browser-only dễ mismatch.',
+    example: 'Render fallback ổn định rồi update trong useEffect nếu cần.',
+  },
+  {
+    id: 64,
+    area: 'Rendering',
+    topic: 'Next.js client component',
+    question: 'Trong Next App Router, khi nào cần “use client”?',
+    options: ['Mọi file đều cần', 'Khi dùng state, effect, event handler, browser APIs hoặc custom hook client-side', 'Khi fetch data ở server', 'Khi muốn SEO'],
+    answer: 1,
+    explanation: 'Không nên đặt use client quá rộng vì tăng client bundle. Chỉ client hoá phần cần tương tác.',
+    example: 'Button mở modal cần use client; article static không cần.',
+  },
+  {
+    id: 65,
+    area: 'Rendering',
+    topic: 'Build-time vs runtime data',
+    question: 'Data này lấy lúc build hay lúc chạy? Câu hỏi này đang kiểm tra điều gì?',
+    options: ['Bạn hiểu freshness, cache, SEO, user-specific data, rebuild/deploy và server cost', 'Bạn nhớ npm script', 'Bạn biết CSS selector', 'Bạn dùng Git branch gì'],
+    answer: 0,
+    explanation: 'Chọn sai thời điểm lấy data có thể gây data cũ, leak data user hoặc performance kém.',
+    example: 'Blog public ít đổi: build/cache; profile user: runtime theo session.',
+  },
+  {
+    id: 66,
+    area: 'Rendering',
+    topic: 'ISR',
+    question: 'Product detail public có hàng chục nghìn sản phẩm, cần SEO và cập nhật định kỳ. Strategy nào đáng cân nhắc?',
+    options: ['ISR/revalidation hoặc hybrid cache strategy', 'CSR trắng hoàn toàn cho SEO', 'Rebuild toàn bộ mỗi phút', 'Không cache gì cả'],
+    answer: 0,
+    explanation: 'ISR giữ lợi ích static/CDN nhưng không phải rebuild toàn site khi một product đổi.',
+    example: 'Product page ISR; stock realtime fetch riêng.',
+  },
+  {
+    id: 67,
+    area: 'Architecture',
+    topic: 'Component size',
+    question: 'Component UserManagement 900 dòng chứa API, table, filter, modal, form, validation. Refactor thế nào?',
+    options: ['Tách UserTable, UserFilter, UserFormModal, hooks data, service, types/constants theo responsibility', 'Đổi tên file BigUserManagement là đủ', 'Đưa hết vào Redux', 'Copy thành nhiều file giống nhau'],
+    answer: 0,
+    explanation: 'Câu này kiểm tra tư duy maintainability. UI, data logic, service và types nên có trách nhiệm rõ.',
+    example: 'features/users/components + hooks + services + types',
+  },
+  {
+    id: 68,
+    area: 'Architecture',
+    topic: 'Feature-based structure',
+    question: 'UserTable chỉ dùng trong feature users. Có nên đưa vào shared/components ngay không?',
+    options: ['Không nên shared quá sớm; để trong features/users/components trước', 'Có, mọi component phải shared', 'Có vì tên là Table', 'Không thể có components trong feature'],
+    answer: 0,
+    explanation: 'Shared nên chứa thứ thật sự dùng chung nhiều feature. Shared folder rất dễ thành bãi chứa.',
+    example: 'shared/Button dùng nhiều nơi; UserTable thuộc features/users.',
+  },
+  {
+    id: 69,
+    area: 'Architecture',
+    topic: 'Mock API',
+    question: 'BE chưa xong API nhưng FE cần làm UI trước. Cách làm chuyên nghiệp?',
+    options: ['Dừng hoàn toàn tới khi BE xong', 'Thống nhất API contract, tạo mock service/MSW, type response, sau đó thay endpoint thật', 'Hard-code mọi thứ trong JSX', 'Không cần hỏi contract'],
+    answer: 1,
+    explanation: 'FE mid-level cần biết làm song song với BE bằng contract/mock, giảm blocking và phát hiện requirement sớm.',
+    example: 'MSW handlers theo OpenAPI/contract tạm.',
+  },
+  {
+    id: 70,
+    area: 'Architecture',
+    topic: 'Debug production',
+    question: 'Production trắng màn sau deploy React app. Bạn debug theo thứ tự nào?',
+    options: ['Đổi màu background trước', 'Mở Console/Network, check JS runtime error, chunk 404, env/base path, route fallback, API/config', 'Đổ lỗi backend ngay', 'Xoá node_modules trên server'],
+    answer: 1,
+    explanation: 'Nhà tuyển dụng muốn thấy cách debug có hệ thống, không đoán mò.',
+    example: 'Console error + Network 404/chunk + env + build logs.',
+  },
+  {
+    id: 71,
+    area: 'Interview',
+    topic: 'Project explanation',
+    question: 'Khi được hỏi “feature khó nhất em từng làm là gì?”, cấu trúc trả lời tốt?',
+    options: ['Chỉ nói em làm nhiều lắm', 'Bối cảnh → vấn đề → quyết định kỹ thuật → trade-off → kết quả', 'Chỉ kể tên thư viện', 'Nói không nhớ'],
+    answer: 1,
+    explanation: 'Level 2.5+ không chỉ liệt kê tech. Cần chứng minh bạn biết giải quyết vấn đề và trade-off.',
+    example: 'Ví dụ: tối ưu table 10k records: đo profiler → virtualization → kết quả render giảm X.',
+  },
+  {
+    id: 72,
+    area: 'Interview',
+    topic: 'Technical trade-off',
+    question: 'Nếu interviewer hỏi “Tại sao không dùng Redux cho tất cả?”, trả lời nào tốt?',
+    options: ['Vì em ghét Redux', 'Vì cần phân loại state; không nên global hoá local/server state nếu không cần, tránh coupling và duplicate source of truth', 'Vì Redux không chạy với React', 'Vì Context thay mọi thứ'],
+    answer: 1,
+    explanation: 'Trả lời tốt phải dựa vào bài toán, không dựa vào sở thích. Đây là trọng tâm nhà tuyển dụng hay đánh giá.',
+    example: 'Server state dùng Query, form draft local/RHF, auth/theme global nếu cần.',
+  },
 ];
 
-const SOURCES = [
-  'React Docs: state, effects, hooks, memoization, Strict Mode, Suspense, transitions',
-  'MDN Web Docs: HTML/CSS, JavaScript ES6+, Promise, async/await, event loop, browser APIs',
-  'TypeScript Handbook: narrowing, generics, utility types, conditional types, template literal types',
-  'Redux Toolkit Docs: configureStore, createSlice, createAsyncThunk, createEntityAdapter, RTK Query',
-  'React-Redux Docs: Provider, useSelector, useDispatch, typed hooks',
-  'TanStack Query/Router Docs: query keys, staleTime, mutation, invalidation, loaders, search params, beforeLoad',
-  'Axios Docs: instances, request config, interceptors, cancellation, error handling',
-  'React Hook Form + Zod Docs: register, Controller, resolver, field arrays, schema validation',
-  'Testing Library Docs: query priority, user-event, findBy, waitFor, behavior-focused tests',
-  'Git SCM + Vite + Next.js Docs: branching, rebase, build, env, CSR, SSR, SSG, ISR, hydration',
-];
-
-const CONCEPTS = [
-  ['html-css','Semantic HTML','MDN HTML','Dùng thẻ đúng ý nghĩa như header, nav, main, section, article, footer để browser, SEO và assistive tech hiểu cấu trúc trang.','Dùng div/span cho mọi thứ khiến code khó đọc và accessibility kém.','<main><article><h1>React interview</h1></article></main>'],
-  ['html-css','Accessible form','MDN HTML Forms','Input nên có label liên kết bằng htmlFor/id; button trong form cần type rõ ràng để tránh submit ngoài ý muốn.','Chỉ dùng placeholder thay label hoặc quên type="button" trong form.','<label htmlFor="email">Email</label><input id="email" type="email" />'],
-  ['html-css','Icon button','MDN Accessibility','Icon-only button cần accessible name như aria-label và nên dùng button thật để có keyboard/focus mặc định.','Dùng div onClick cho nút xoá/sửa khiến người dùng bàn phím và screen reader khó dùng.','<button aria-label="Xóa người dùng" type="button">🗑</button>'],
-  ['html-css','Flexbox','MDN CSS Flexbox','Flexbox phù hợp layout một chiều như navbar, button group, căn giữa item theo hàng/cột.','Dùng flex để ép mọi layout hai chiều lớn như dashboard phức tạp.','display:flex; align-items:center; justify-content:space-between;'],
-  ['html-css','CSS Grid','MDN CSS Grid','Grid phù hợp layout hai chiều như dashboard, gallery, card list có hàng và cột rõ.','Dùng absolute/margin hard-code cho layout tổng thể làm responsive dễ vỡ.','display:grid; grid-template-columns:240px 1fr;'],
-  ['html-css','Stacking context','MDN CSS z-index','z-index chỉ so sánh trong cùng stacking context; transform, opacity, position + z-index có thể tạo context mới.','Tăng z-index rất lớn nhưng không kiểm tra parent stacking context hoặc portal.','Modal nên render qua portal/body khi bị overflow/z-index parent chặn.'],
-  ['html-css','Responsive units','MDN CSS Values','rem, %, minmax, clamp và media/container queries giúp UI scale tốt hơn width/height cứng.','Set pixel cố định cho mọi màn hình khiến mobile vỡ layout.','grid-template-columns:repeat(auto-fit,minmax(240px,1fr));'],
-  ['js','let const var','MDN JavaScript','let/const block-scoped và có TDZ; var function-scoped và hoist thành undefined.','Dùng var trong loop/callback dẫn tới bug scope khó thấy.','for (let i=0;i<3;i++) setTimeout(()=>console.log(i));'],
-  ['js','const binding','MDN JavaScript','const khóa binding chứ không làm object immutable sâu; property bên trong vẫn có thể đổi.','Nghĩ const object thì không thể mutate property.','const user={name:"A"}; user.name="B";'],
-  ['js','Primitive vs reference','MDN JavaScript','Primitive copy theo value; object, array, function copy theo reference.','Shallow copy object rồi mutate nested field làm đổi cả object gốc.','const copy={...user}; copy.address.city="HN";'],
-  ['js','Equality and coercion','MDN Equality','=== so sánh cả type/value; == ép kiểu ngầm và dễ tạo bug.','Dùng == cho logic permission/status/flag quan trọng.','0 == false // true; 0 === false // false'],
-  ['js','Truthy falsy','MDN Boolean','Falsy gồm false, 0, -0, empty string, null, undefined, NaN.','if(count) làm mất trường hợp count=0 hợp lệ.','if (count !== null && count !== undefined) {...}'],
-  ['js','Nullish coalescing','MDN ??','?? chỉ fallback khi null/undefined; || fallback với mọi falsy như 0, false, empty string.','Dùng || cho discountPercent=0 hoặc page=0 hợp lệ.','const page = query.page ?? 1;'],
-  ['js','Optional chaining','MDN Optional chaining','?. tránh throw khi truy cập qua null/undefined nhưng không thay thế validation dữ liệu.','Lạm dụng ?. để che API contract sai làm UI trống khó debug.','user?.profile?.name'],
-  ['js','Rest and spread','MDN Rest/Spread','Rest gom phần còn lại; spread trải array/object/iterable ra, object spread chỉ shallow copy.','Tưởng spread là deep clone và mutate nested state trực tiếp.','const next={...user,name:"Nam"};'],
-  ['js','Array methods','MDN Array','map biến đổi, filter lọc, reduce gom data, find lấy item đầu tiên, some/every kiểm tra điều kiện.','Dùng forEach để return array mới hoặc filter()[0] khi chỉ cần find.','orders.reduce((acc,o)=>({...acc,[o.status]:[...(acc[o.status]||[]),o]}),{})'],
-  ['js','Mutating array methods','MDN Array','sort, splice, push mutate mảng gốc; slice/map/filter không mutate.','sort trực tiếp trên React state array rồi set lại cùng reference.','const sorted=[...users].sort((a,b)=>a.name.localeCompare(b.name));'],
-  ['js','Map Set WeakMap','MDN Collections','Map cho key linh hoạt, Set giữ unique values, WeakMap lưu metadata theo object không giữ strong reference.','Dùng object thường cho key là object/function rồi bị stringify sai.','const unique=[...new Set(ids)];'],
-  ['js','Prototype and class','MDN Prototype/Class','class trong JS là cú pháp thuận tiện trên prototype-based inheritance.','Nghĩ class JS hoàn toàn giống Java và không liên quan prototype chain.','class User { say(){ return this.name } }'],
-  ['js','Modules','MDN Modules','ES modules import/export tĩnh giúp bundler phân tích dependency graph và tree-shaking.','Dùng import động/tùy tiện khi không cần làm bundle khó tối ưu.','import { debounce } from "./utils";'],
-  ['js','Closure','MDN Closures','Closure là function nhớ lexical scope nơi nó được tạo; rất quan trọng cho debounce, callback, hooks.','Không hiểu closure dẫn tới stale closure trong useEffect/timer.','function counter(){let n=0; return()=>++n}'],
-  ['js','Promise all','MDN Promise','Promise.all chạy song song và reject nếu một promise reject; allSettled đợi mọi promise settle.','await tuần tự các request độc lập làm page chậm.','const [a,b]=await Promise.all([fetchA(),fetchB()]);'],
-  ['js','Event loop','MDN Execution Model','JS chạy run-to-completion; microtask như Promise.then chạy trước task như setTimeout.','Nghĩ setTimeout 0 chạy trước Promise.then.','console.log(1); Promise.resolve().then(()=>console.log(2)); setTimeout(()=>console.log(3));'],
-  ['js','Async await','MDN async function','await tạm dừng async function và phần sau chạy tiếp qua promise job, không block toàn bộ main thread.','Nghĩ await biến JS thành sync blocking thật.','async function f(){ console.log(1); await 0; console.log(2) }'],
-  ['js','AbortController','MDN AbortController','AbortController hủy request cũ khi query đổi hoặc component unmount, giảm race condition.','Để response search cũ ghi đè response mới.','const c=new AbortController(); fetch(url,{signal:c.signal});'],
-  ['ts','Structural typing','TypeScript Handbook','TypeScript chủ yếu structural typing: hợp shape là assign được, không cần cùng tên type.','Nghĩ tên type khác thì luôn không tương thích.','type A={x:number}; type B={x:number};'],
-  ['ts','Union and intersection','TypeScript Handbook','Union là hoặc; intersection là và/gộp shape, cần cẩn thận khi property conflict.','Dùng intersection cho type conflict mà không kiểm tra never.','type Admin = User & { role:"admin" }'],
-  ['ts','Narrowing','TypeScript Handbook','Narrowing làm hẹp type qua typeof, in, instanceof, equality, control flow và type guard.','Ép as any/as User thay vì guard dữ liệu unknown.','if (typeof value === "string") value.toUpperCase();'],
-  ['ts','Discriminated union','TypeScript Handbook','Union có field literal chung như status/type giúp switch case an toàn và tránh state mâu thuẫn.','Dùng nhiều boolean loading/success/error dễ vừa success vừa error.','{status:"success",data} | {status:"error",message}'],
-  ['ts','Generic constraint','TypeScript Handbook','Generic giúp tái sử dụng logic mà vẫn giữ type; constraint đảm bảo field cần dùng tồn tại.','Dùng any thay generic hoặc truy cập item.id trên T không constraint.','function getId<T extends {id:string}>(x:T){return x.id}'],
-  ['ts','keyof indexed access','TypeScript Handbook','keyof lấy union key; T[K] lấy type value theo key, hợp cho form/update helpers.','Cho key:string và value:any khiến update sai field không bị bắt.','function get<T,K extends keyof T>(obj:T,key:K):T[K]{return obj[key]}'],
-  ['ts','Utility types','TypeScript Handbook','Partial, Pick, Omit, Record, Required, Exclude, Extract, NonNullable giúp biến đổi type phổ biến.','Viết lại DTO thủ công rồi lệch với domain type.','type UpdateUser = Partial<Omit<User,"id">>'],
-  ['ts','Conditional and infer','TypeScript Handbook','Conditional type và infer cho phép suy luận type con trong type phức tạp.','Dùng infer như runtime logic.','type Item<T> = T extends Array<infer U> ? U : never'],
-  ['ts','Awaited ReturnType','TypeScript Handbook','Awaited<ReturnType<typeof fn>> lấy type data resolve từ async function.','Copy type response thủ công rồi lệch với service.','type User = Awaited<ReturnType<typeof fetchUser>>'],
-  ['ts','satisfies','TypeScript 4.9','satisfies check object thỏa shape nhưng giữ literal inference cụ thể.','Dùng as ép type làm mất check config.','const routes = {...} satisfies Record<string,RouteConfig>'],
-  ['ts','React typing','React + TS','React.ReactNode hợp cho children; event nên dùng React.ChangeEvent/FormEvent đúng element.','Dùng any cho event/children hoặc JSX.Element cho mọi children.','type Props={children:React.ReactNode}'],
-  ['react','Props and state','React Docs','Props là input readonly; state là memory nội bộ làm component re-render khi đổi.','Mutate props/state trực tiếp thay vì setter/immutable update.','const [count,setCount]=useState(0)'],
-  ['react','Immutable update','React Docs','Update object/array state cần tạo reference mới ở nhánh đổi.','push/splice/sort trực tiếp trên state.','setUser(p=>({...p,address:{...p.address,city:"HN"}}))'],
-  ['react','Keys','React Docs','Key là identity ổn định để React reconcile list đúng khi add/remove/sort.','Dùng index làm key cho list có input/checkbox và reorder.','items.map(item => <Row key={item.id} />)'],
-  ['react','Derived state','React Docs','Nếu tính được từ props/state hiện tại thì không cần state/effect riêng.','Dùng useEffect để set fullName từ firstName/lastName.','const fullName = `${firstName} ${lastName}`'],
-  ['react','Controlled vs uncontrolled','React Docs','Controlled input lấy value từ state; uncontrolled để DOM/form lib quản lý value.','Dùng controlled cho form rất lớn mà không tối ưu hoặc dùng ref cho mọi validate realtime.','<input value={email} onChange={e=>setEmail(e.target.value)} />'],
-  ['react','useEffect','React Docs','useEffect dùng để đồng bộ external systems như API, timer, listener, subscription.','Dùng effect cho mọi calculation trong render hoặc thiếu dependencies.','useEffect(()=>{ const id=setInterval(...); return()=>clearInterval(id); },[])'],
-  ['react','Strict Mode','React Docs','Strict Mode trong dev cố tình chạy thêm setup/cleanup để phát hiện side effect lỗi.','Thấy effect chạy 2 lần rồi hack bỏ cleanup.','StrictMode chỉ là dev check.'],
-  ['react','Memoization','React Docs','useMemo cache value, useCallback cache function reference, React.memo shallow compare props.','Bọc mọi thứ bằng memo khi chưa đo performance.','const onDelete=useCallback(id=>remove(id),[remove])'],
-  ['react','useRef','React Docs','useRef lưu mutable value không gây render hoặc truy cập DOM.','Dùng ref để giữ UI state cần render.','inputRef.current?.focus()'],
-  ['react','useReducer','React Docs','useReducer hợp state nhiều action/transition phức tạp.','Dùng reducer cho boolean open/close đơn giản làm thừa.','dispatch({type:"increment"})'],
-  ['react','Concurrent hooks','React Docs','useTransition/useDeferredValue giúp ưu tiên update quan trọng và trì hoãn render nặng.','Dùng chúng thay debounce/API cache trong mọi case.','startTransition(()=>setFiltered(bigList))'],
-  ['react','Error Boundary and Portal','React Docs','Error Boundary bắt lỗi render subtree; Portal render modal/tooltip ra DOM node khác.','Nghĩ ErrorBoundary bắt mọi async error hoặc render modal trong parent bị overflow chặn.','createPortal(<Modal/>, document.body)'],
-  ['state','State placement','React Docs','Đặt state gần nơi dùng nhất, chỉ lift/global khi thật sự cần share.','Đưa mọi state lên Redux/Zustand.','Search input local; auth user global.'],
-  ['state','Context','React Docs','Context truyền dữ liệu sâu như theme/locale/auth, nhưng không tự tối ưu mọi re-render.','Dùng Context làm cache API thay TanStack Query.','<ThemeContext.Provider value={value}>'],
-  ['state','Client vs server state','TanStack Query Docs','Client state do UI sở hữu; server state nằm remote, async, stale/cache/refetch.','Đưa toàn bộ API data vào global client store.','Product list: query; sidebarOpen: client store.'],
-  ['state','URL state','Router Docs','Filter/page/sort/search nên ở URL nếu cần share/bookmark/refresh không mất.','Đưa hover/password/draft nhạy cảm lên URL.','/users?page=2&role=admin'],
-  ['state','Redux flow','Redux Docs','UI dispatch action, reducer tính next state, store update, UI đọc lại theo one-way data flow.','Component sửa store trực tiếp hoặc gọi API trong reducer.','dispatch(counterActions.increment())'],
-  ['state','configureStore','Redux Toolkit Docs','configureStore setup reducer, middleware mặc định, DevTools và dev checks.','Tự viết createStore cũ cho project mới không cần thiết.','configureStore({ reducer:{auth,users} })'],
-  ['state','createSlice','Redux Toolkit Docs','createSlice sinh reducer/action creators và dùng Immer cho draft mutation.','Tưởng state.value++ mutate state thật.','const slice=createSlice({name,initialState,reducers})'],
-  ['state','createAsyncThunk','Redux Toolkit Docs','createAsyncThunk sinh pending/fulfilled/rejected cho async logic.','Không xử lý rejected/loading state hoặc không dùng rejectWithValue cho server errors.','builder.addCase(fetchUsers.fulfilled,...)'],
-  ['state','createEntityAdapter','Redux Toolkit Docs','Entity adapter quản lý collection normalized ids/entities và CRUD selectors/reducers.','Lưu trùng entity ở list/detail nhiều nơi.','adapter.upsertMany(state, users)'],
-  ['state','React Redux hooks','React-Redux Docs','Provider cấp store; useSelector đọc state; useDispatch dispatch action; typed hooks giúp TS tốt hơn.','Selector trả object mới mỗi lần gây re-render.','const user=useAppSelector(s=>s.auth.user)'],
-  ['state','RTK Query','Redux Toolkit Docs','RTK Query quản lý server state trong hệ sinh thái Redux, có hooks và tag invalidation.','Đưa server cache vào slice thủ công khi RTK Query đã đủ.','api.endpoints.getUsers.useQuery()'],
-  ['state','Zustand','Zustand Docs','Zustand store gọn, selector giúp component subscribe đúng slice, persist lưu chọn lọc.','useStore() lấy cả store hoặc persist token/server state bừa bãi.','useAuthStore(s=>s.user?.name)'],
-  ['api','Axios instance','Axios Docs','axios.create tạo instance có baseURL, timeout, headers, interceptors.','Gọi axios.get rải rác trong component.','const api=axios.create({baseURL,timeout:15000})'],
-  ['api','Axios interceptors','Axios Docs','Request interceptor gắn token; response interceptor normalize/handle error/refresh token.','Gọi React hooks trong interceptor hoặc không eject interceptor tạo trong component.','api.interceptors.request.use(config=>config)'],
-  ['api','Axios error and cancel','Axios Docs','Phân biệt error.response/error.request/setup; dùng AbortController signal để hủy request cũ.','Alert chung mọi lỗi và để response cũ ghi đè response mới.','api.get(url,{signal:controller.signal})'],
-  ['api','TanStack Query key','TanStack Query Docs','queryKey phải ổn định và chứa đủ input ảnh hưởng data.','Dùng ["users"] cho mọi page/filter hoặc Date.now trong key.','["users", {page, keyword}]'],
-  ['api','TanStack staleTime gcTime','TanStack Query Docs','staleTime là độ fresh; gcTime là thời gian giữ cache inactive.','Nhầm staleTime với thời gian xóa cache.','staleTime: 60_000'],
-  ['api','TanStack mutation','TanStack Query Docs','useMutation cho create/update/delete, sau đó invalidate hoặc update cache.','Dùng useQuery cho POST submit.','useMutation({mutationFn:createUser,onSuccess:()=>invalidate})'],
-  ['api','Optimistic update','TanStack Query Docs','Optimistic update cần snapshot, update tạm, rollback khi error, invalidate khi settled.','Update UI trước mà không rollback nếu fail.','onMutate lưu previousTodos'],
-  ['api','React Hook Form','React Hook Form Docs','register cho uncontrolled input, Controller cho controlled UI libs, reset cho edit form.','Controlled state cho 80 input làm form lag hoặc setValue từng field trong render.','<input {...register("email")} />'],
-  ['api','Zod','Zod Docs','parse throw, safeParse trả result; refine/transform/coerce/optional-nullable-nullish xử lý runtime validation.','Chỉ dựa TypeScript type cho dữ liệu API/form runtime.','const result = UserSchema.safeParse(data)'],
-  ['api','Router params','React Router / TanStack Router Docs','Dynamic params lấy id/slug; search params cho filter/page; beforeLoad guard auth/permission.','Lưu filter URL vào local state rồi refresh mất.','/users/:id?page=2'],
-  ['rendering','SPA CSR','React/Vite Docs','SPA/CSR tải HTML chính rồi JS render UI ở client.','Dùng CSR thuần cho mọi trang SEO/public content.','Vite React admin dashboard thường CSR tốt.'],
-  ['rendering','SSR','React DOM / Next Docs','SSR render HTML ở server theo request rồi hydrate ở client.','Nghĩ SSR luôn làm app interactive nhanh hơn.','Server render profile theo cookie/session.'],
-  ['rendering','SSG ISR','Next Docs','SSG render static HTML ở build time; ISR cập nhật static page sau build bằng revalidation.','Dùng SSG cho private per-user dashboard hoặc rebuild toàn bộ site mỗi phút.','Blog dùng SSG, product detail dùng ISR.'],
-  ['rendering','Hydration','React DOM Docs','Hydration attach React vào HTML server-rendered để có tương tác.','Render Date.now/localStorage khác server gây mismatch.','hydrateRoot(container, <App />)'],
-  ['rendering','Server Client Components','Next Docs','Server Component fetch data/secret ở server; Client Component cho state/event/browser API.','Đặt use client ở layout gốc không cần thiết.','use client chỉ ở component có onClick/useState.'],
-  ['rendering','Build runtime data','Next/Vite Docs','Build-time data lấy khi build; runtime/request data lấy theo user/request/interaction.','Cache chung dữ liệu cá nhân hoặc mong build-time data tự fresh từng request.','getStaticProps/generateStaticParams vs SSR/client fetch.'],
-  ['rendering','Streaming','Next Docs','Streaming gửi từng phần HTML khi sẵn sàng, kết hợp Suspense/loading UI.','Chờ toàn bộ data chậm rồi mới gửi HTML.','loading.js trong App Router.'],
-  ['rendering','CRA vs Vite','React Blog / Vite Docs','CRA deprecated cho app mới; Vite/build tool hiện đại hoặc framework được khuyến nghị.','Tạo app mới bằng CRA vì nghĩ vẫn recommended.','npm create vite@latest'],
-  ['testing-build','Testing Library queries','Testing Library Docs','Ưu tiên query giống user: getByRole, getByLabelText, getByText; test behavior, không test implementation detail.','Query bằng className/DOM index làm test giòn.','screen.getByRole("button", {name:/submit/i})'],
-  ['testing-build','Async testing','Testing Library Docs','findBy chờ element xuất hiện; waitFor chờ assertion bất kỳ đúng; userEvent mô phỏng user tốt hơn fireEvent.','Dùng getBy ngay cho UI sau API hoặc fireEvent cho mọi thao tác.','await screen.findByText(/success/i)'],
-  ['testing-build','MSW','MSW/Testing Library','MSW mock network layer, test gần behavior thật và không phụ thuộc Axios/fetch implementation.','Mock HTTP client quá sát chi tiết.','server.use(http.get("/api/users", ...))'],
-  ['testing-build','Git basics','Git SCM','Branch là con trỏ tới commit; HEAD là vị trí checkout; fetch khác pull; revert an toàn hơn reset trên branch shared.','Rebase branch shared bừa bãi hoặc force push main.','git fetch && git rebase origin/main'],
-  ['testing-build','Vite env build','Vite Docs','Vite expose env client qua import.meta.env.VITE_*; build tạo dist static và cần base path đúng.','Dùng process.env.REACT_APP_* như CRA hoặc deploy subpath sai base.','import.meta.env.VITE_API_URL'],
-  ['testing-build','Security','OWASP','XSS cần escape/sanitize/CSP; FE role check chỉ là UX; token storage cần cân nhắc XSS/CSRF.','Tin TypeScript string hoặc ẩn nút delete là đủ bảo mật.','Backend phải check permission cho API delete.'],
-];
-
-const QUESTION_TEMPLATES = [
-  c => ({ question: `Theo docs, ${c.title} nên hiểu thế nào?`, correct: c.core }),
-  c => ({ question: `Trong dự án thực tế, ${c.title} giúp xử lý vấn đề gì?`, correct: `Áp dụng khi cần ${c.core.charAt(0).toLowerCase() + c.core.slice(1)}` }),
-  c => ({ question: `Sai lầm phổ biến với ${c.title} là gì?`, correct: c.pitfall }),
-  c => ({ question: `Khi phỏng vấn về ${c.title}, câu trả lời nào tốt nhất?`, correct: `Nêu khái niệm, ví dụ thực tế, trade-off và lỗi thường gặp: ${c.core}` }),
-];
-
-const EXTRA_QUESTIONS = [
-  ['state','State / Redux / TanStack','Redux Toolkit + TanStack Query Docs','Chọn Redux hay TanStack Query','Thường không copy API product list đã cache bằng TanStack Query vào Redux vì sẽ tạo hai source of truth.','Copy server state vào nhiều store rồi tự sync thủ công.','products: useQuery; sidebar/theme/auth UI: Zustand/Redux/Context.'],
-  ['rendering','SSR / SSG / ISR','Next.js Docs','Chọn rendering strategy','Trang product public nhiều trang cần SEO và cập nhật định kỳ nên cân nhắc SSG/ISR hoặc hybrid cache strategy.','Dùng CSR trắng hoàn toàn cho mọi product public mà không cân nhắc SEO/cache.','Product detail dùng ISR, phần stock realtime fetch riêng.'],
-  ['js','JavaScript Event Loop','MDN Execution Model','Thứ tự event loop','Thứ tự 1, 4, 3, 2 vì sync chạy trước, microtask Promise chạy trước task setTimeout.','Nghĩ setTimeout 0 luôn chạy ngay trước Promise.then.','Sync → microtask queue → task queue.'],
-  ['ts','TypeScript Runtime Boundary','TypeScript Handbook + Zod Docs','TypeScript không validate runtime','API trả unknown thì nên dùng type guard hoặc schema validator như Zod trước khi dùng data.name.','Ép data as any/User rồi dùng ngay, dễ runtime crash khi API sai shape.','const parsed = UserSchema.safeParse(data);'],
-];
-
-function stableHash(input) {
-  let hash = 0;
-  for (let i = 0; i < input.length; i += 1) hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
-  return hash;
-}
-
-function makeWrongOptions(concept, seed) {
-  const pool = [
-    `Bỏ qua ${concept.title} vì thư viện/framework sẽ tự xử lý mọi trường hợp.`,
-    `Dùng any hoặc ép kiểu để tránh phải hiểu ${concept.title}.`,
-    `Áp dụng ${concept.title} cho mọi tình huống mà không cần phân tích trade-off.`,
-    `Chỉ cần nhớ cú pháp, không cần hiểu runtime behavior của ${concept.title}.`,
-    `Đưa toàn bộ logic liên quan ${concept.title} vào global store để tiện gọi.`,
-    `Xử lý ${concept.title} bằng CSS hoặc DOM thủ công thay vì đúng API/convention.`,
-    `Dùng lại pattern cũ trong mọi dự án, không kiểm tra docs/version hiện tại.`,
-  ];
-  const start = seed % pool.length;
-  return [pool[start], pool[(start + 2) % pool.length], pool[(start + 4) % pool.length]];
-}
-
-function buildQuestion(concept, index, variant) {
-  const picked = QUESTION_TEMPLATES[variant](concept);
-  const wrongs = makeWrongOptions(concept, index + variant);
-  const raw = [picked.correct, ...wrongs];
-  const shift = stableHash(`${concept.title}-${variant}`) % 4;
-  const options = [...raw.slice(shift), ...raw.slice(0, shift)];
-  return {
-    id: index * QUESTION_TEMPLATES.length + variant + 1,
-    area: concept.area,
-    topic: concept.topic,
-    source: concept.source,
-    title: concept.title,
-    question: picked.question,
-    options,
-    answer: options.indexOf(picked.correct),
-    explanation: `${concept.core} Lỗi cần tránh: ${concept.pitfall}`,
-    example: concept.example,
-  };
-}
-
-const conceptObjects = CONCEPTS.map(c => ({ area: c[0], topic: c[1], source: c[2], title: c[3], core: c[4], pitfall: c[5], example: c[6] }));
-const generated = conceptObjects.flatMap((concept, index) => QUESTION_TEMPLATES.map((_, variant) => buildQuestion(concept, index, variant)));
-const extra = EXTRA_QUESTIONS.map((c, idx) => {
-  const concept = { area:c[0], topic:c[1], source:c[2], title:c[3], core:c[4], pitfall:c[5], example:c[6] };
-  return buildQuestion(concept, generated.length + idx, idx % QUESTION_TEMPLATES.length);
-});
-const ALL_QUESTIONS = [...generated, ...extra].slice(0, 452).map((q, index) => ({ ...q, id: index + 1 }));
+const AREAS = ['Tất cả', ...Array.from(new Set(QUESTIONS.map((q) => q.area)))];
+const alphabet = ['A', 'B', 'C', 'D'];
 
 function getScoreLabel(percent) {
-  if (percent >= 85) return 'Rất ổn - nền tảng phỏng vấn mạnh';
-  if (percent >= 70) return 'Khá tốt - cần vá vài lỗ hổng';
-  if (percent >= 50) return 'Trung bình - nên ôn lại nhóm sai nhiều';
-  return 'Cần ôn lại nền tảng trước khi phỏng vấn';
+  if (percent >= 85) return 'Rất ổn - có thể đi phỏng vấn thử';
+  if (percent >= 70) return 'Khá tốt - ôn lại các câu sai';
+  if (percent >= 50) return 'Nắm được nền nhưng còn nhiều lỗ hổng';
+  return 'Cần ôn lại theo từng nhóm trước khi phỏng vấn';
 }
 
 export default function App() {
   const [answers, setAnswers] = useState(() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
   });
-  const [submitted, setSubmitted] = useState(false);
-  const [area, setArea] = useState('all');
-  const [topic, setTopic] = useState('all');
+  const [area, setArea] = useState('Tất cả');
+  const [topic, setTopic] = useState('Tất cả');
   const [mode, setMode] = useState('all');
   const [search, setSearch] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(answers)); } catch { /* ignore */ }
   }, [answers]);
 
-  const areaQuestions = useMemo(() => area === 'all' ? ALL_QUESTIONS : ALL_QUESTIONS.filter(q => q.area === area), [area]);
-  const topics = useMemo(() => ['all', ...Array.from(new Set(areaQuestions.map(q => q.topic)))], [areaQuestions]);
+  const areaQuestions = useMemo(() => {
+    return area === 'Tất cả' ? QUESTIONS : QUESTIONS.filter((q) => q.area === area);
+  }, [area]);
+
+  const topics = useMemo(() => ['Tất cả', ...Array.from(new Set(areaQuestions.map((q) => q.topic)))], [areaQuestions]);
 
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase();
-    return areaQuestions.filter(q => {
+    return areaQuestions.filter((q) => {
       const selected = answers[q.id];
-      const topicOk = topic === 'all' || q.topic === topic;
-      const modeOk = mode === 'all' || (mode === 'unanswered' && selected === undefined) || (mode === 'wrong' && selected !== undefined && selected !== q.answer) || (mode === 'correct' && selected === q.answer);
-      const searchOk = !keyword || `${q.topic} ${q.title} ${q.question} ${q.explanation} ${q.example} ${q.source}`.toLowerCase().includes(keyword);
+      const topicOk = topic === 'Tất cả' || q.topic === topic;
+      const modeOk = mode === 'all'
+        || (mode === 'unanswered' && selected === undefined)
+        || (mode === 'wrong' && selected !== undefined && selected !== q.answer)
+        || (mode === 'correct' && selected === q.answer);
+      const searchOk = !keyword || `${q.area} ${q.topic} ${q.question} ${q.explanation} ${q.example || ''}`.toLowerCase().includes(keyword);
       return topicOk && modeOk && searchOk;
     });
   }, [areaQuestions, topic, mode, search, answers]);
 
   const result = useMemo(() => {
-    const correct = ALL_QUESTIONS.reduce((sum, q) => sum + (answers[q.id] === q.answer ? 1 : 0), 0);
-    return { correct, total: ALL_QUESTIONS.length, percent: Math.round((correct / ALL_QUESTIONS.length) * 100) };
+    const correct = QUESTIONS.reduce((sum, q) => sum + (answers[q.id] === q.answer ? 1 : 0), 0);
+    return { correct, total: QUESTIONS.length, percent: Math.round((correct / QUESTIONS.length) * 100) };
   }, [answers]);
 
   const answeredCount = Object.keys(answers).length;
-  const areaCounts = AREAS.reduce((acc, [id]) => {
-    acc[id] = id === 'all' ? ALL_QUESTIONS.length : ALL_QUESTIONS.filter(q => q.area === id).length;
+  const areaCounts = useMemo(() => AREAS.reduce((acc, item) => {
+    acc[item] = item === 'Tất cả' ? QUESTIONS.length : QUESTIONS.filter((q) => q.area === item).length;
     return acc;
-  }, {});
+  }, {}), []);
 
-  function choose(id, answer) {
+  function selectAnswer(id, optionIndex) {
     if (submitted) return;
-    setAnswers(prev => ({ ...prev, [id]: answer }));
+    setAnswers((prev) => ({ ...prev, [id]: optionIndex }));
   }
 
   function resetQuiz() {
-    setAnswers({}); setSubmitted(false); setArea('all'); setTopic('all'); setMode('all'); setSearch('');
-    localStorage.removeItem(STORAGE_KEY);
+    setAnswers({});
+    setArea('Tất cả');
+    setTopic('Tất cả');
+    setMode('all');
+    setSearch('');
+    setSubmitted(false);
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -238,36 +801,98 @@ export default function App() {
       <div className="page">
         <header className="hero card glass">
           <div className="hero-copy">
-            <span className="eyebrow">FE React Interview Quiz · 2.5+ years</span>
-            <h1>Bộ trắc nghiệm FE React theo docs</h1>
-            <p>{ALL_QUESTIONS.length} câu hỏi thực tế, bám theo docs chính thức và case phỏng vấn: JS ES6+, event loop, TypeScript, React, Redux Toolkit, TanStack, Axios, RHF, Zod, Git, Vite, SSR/SSG/ISR.</p>
-            <div className="source-box">{SOURCES.map(source => <span key={source}>{source}</span>)}</div>
+            <span className="eyebrow">FE React Interview Quiz · recruiter-style</span>
+            <h1>Câu hỏi FE React đúng kiểu nhà tuyển dụng</h1>
+            <p>
+              Bộ câu hỏi đã bỏ kiểu sinh máy móc “Theo docs...”. Mỗi câu tập trung vào case thực tế, quyết định kỹ thuật,
+              trade-off và lỗi hay gặp ở level khoảng 2.5+ năm.
+            </p>
+            <div className="source-box">
+              <span>HTML/CSS: semantic, accessibility, layout, responsive, stacking context</span>
+              <span>JavaScript/TypeScript: event loop, async, closure, generic, utility types, runtime validation</span>
+              <span>React: state, effects, keys, memoization, performance, forms</span>
+              <span>State/API: Redux Toolkit, Zustand, TanStack Query, Axios, URL state</span>
+              <span>Build/Deploy/Security: Vite, Git, SPA fallback, XSS, token storage, rendering strategy</span>
+            </div>
           </div>
           <div className="score-card">
-            <span>Tiến độ</span><strong>{answeredCount}/{ALL_QUESTIONS.length}</strong>
-            <div className="progress"><i style={{ width: `${(answeredCount / ALL_QUESTIONS.length) * 100}%` }} /></div>
-            {submitted && <div className="final-score"><b>{result.percent}%</b><small>Đúng {result.correct}/{result.total} · {getScoreLabel(result.percent)}</small></div>}
+            <span>Tiến độ</span>
+            <strong>{answeredCount}/{QUESTIONS.length}</strong>
+            <div className="progress"><i style={{ width: `${(answeredCount / QUESTIONS.length) * 100}%` }} /></div>
+            {submitted && (
+              <div className="final-score">
+                <b>{result.percent}%</b>
+                <small>Đúng {result.correct}/{result.total} · {getScoreLabel(result.percent)}</small>
+              </div>
+            )}
           </div>
         </header>
 
         <section className="toolbar card glass">
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm: Redux Toolkit, event loop, ES6, ISR, Axios..." />
-          <div className="chips row-scroll">{['all','unanswered','wrong','correct'].map(value => <button key={value} onClick={() => setMode(value)} className={mode === value ? 'active magenta' : ''}>{value === 'all' ? 'Tất cả' : value === 'unanswered' ? 'Chưa làm' : value === 'wrong' ? 'Câu sai' : 'Câu đúng'}</button>)}</div>
+          <input value={search} onChange={(e) => setSearch(e.currentTarget.value)} placeholder="Tìm: event loop, Redux, hydration, Axios, form, XSS..." />
+          <div className="chips row-scroll">
+            {[
+              ['all', 'Tất cả'],
+              ['unanswered', 'Chưa làm'],
+              ['wrong', 'Câu sai'],
+              ['correct', 'Câu đúng'],
+            ].map(([value, label]) => (
+              <button key={value} onClick={() => setMode(value)} className={mode === value ? 'active magenta' : ''}>{label}</button>
+            ))}
+          </div>
           <div className="label">Vùng ôn tập</div>
-          <div className="chips row-scroll">{AREAS.map(([id, label]) => <button key={id} onClick={() => { setArea(id); setTopic('all'); }} className={area === id ? 'active green' : ''}>{label} <em>{areaCounts[id]}</em></button>)}</div>
+          <div className="chips row-scroll">
+            {AREAS.map((item) => (
+              <button key={item} onClick={() => { setArea(item); setTopic('Tất cả'); }} className={area === item ? 'active green' : ''}>
+                {item} <em>{areaCounts[item]}</em>
+              </button>
+            ))}
+          </div>
           <div className="label">Chủ đề cụ thể</div>
-          <div className="chips row-scroll">{topics.map(t => <button key={t} onClick={() => setTopic(t)} className={topic === t ? 'active cyan' : ''}>{t === 'all' ? 'Tất cả chủ đề' : t}</button>)}</div>
-          <div className="actions">{!submitted ? <button className="submit" onClick={() => { setSubmitted(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Nộp bài</button> : <button className="reset" onClick={resetQuiz}>Làm lại</button>}</div>
+          <div className="chips row-scroll">
+            {topics.map((item) => (
+              <button key={item} onClick={() => setTopic(item)} className={topic === item ? 'active cyan' : ''}>{item}</button>
+            ))}
+          </div>
+          <div className="actions">
+            {!submitted ? <button className="submit" onClick={() => setSubmitted(true)}>Nộp bài</button> : <button className="reset" onClick={resetQuiz}>Làm lại</button>}
+          </div>
         </section>
 
         <main className="questions">
-          {filtered.map(q => {
-            const selected = answers[q.id]; const done = selected !== undefined; const correct = selected === q.answer;
-            return <article key={q.id} className="question card glass">
-              <div className="q-head"><div><div className="badges"><span>Câu {q.id}</span><span>{q.topic}</span><span>Docs-driven</span></div><h2>{q.question}</h2></div>{done && <strong className={correct ? 'ok' : 'bad'}>{correct ? 'Đúng' : 'Sai'}</strong>}</div>
-              <div className="options">{q.options.map((option, idx) => { const cls = done && idx === q.answer ? 'right' : done && idx === selected && selected !== q.answer ? 'wrong' : selected === idx ? 'chosen' : ''; return <button key={option} className={cls} onClick={() => choose(q.id, idx)}><b>{String.fromCharCode(65 + idx)}</b><span>{option}</span></button>; })}</div>
-              {done && <div className={correct ? 'feedback good' : 'feedback danger'}><p><b>Bạn chọn:</b> {q.options[selected]}</p><p><b>Đáp án đúng:</b> {q.options[q.answer]}</p><p><b>Giải thích:</b> {q.explanation}</p><p className="example"><b>Ví dụ:</b> {q.example}</p><small>Nguồn định hướng: {q.source}</small></div>}
-            </article>;
+          {filtered.map((q) => {
+            const selected = answers[q.id];
+            const hasAnswered = selected !== undefined;
+            const isCorrect = selected === q.answer;
+            return (
+              <article key={q.id} className="question card glass">
+                <div className="q-head">
+                  <div>
+                    <div className="badges"><span>Câu {q.id}</span><span>{q.topic}</span><span>{q.area}</span></div>
+                    <h2>{q.question}</h2>
+                  </div>
+                  {hasAnswered && <strong className={isCorrect ? 'ok' : 'bad'}>{isCorrect ? 'Đúng' : 'Sai'}</strong>}
+                </div>
+                <div className="options">
+                  {q.options.map((option, index) => {
+                    const className = hasAnswered && index === q.answer ? 'right' : hasAnswered && selected === index && selected !== q.answer ? 'wrong' : selected === index ? 'chosen' : '';
+                    return (
+                      <button key={option} className={className} onClick={() => selectAnswer(q.id, index)}>
+                        <b>{alphabet[index]}</b><span>{option}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {hasAnswered && (
+                  <div className={isCorrect ? 'feedback good' : 'feedback danger'}>
+                    <p><b>Bạn chọn:</b> {q.options[selected]}</p>
+                    <p><b>Đáp án đúng:</b> {q.options[q.answer]}</p>
+                    <p><b>Vì sao nhà tuyển dụng hỏi câu này:</b> {q.explanation}</p>
+                    {q.example && <p className="example"><b>Ví dụ:</b> {q.example}</p>}
+                  </div>
+                )}
+              </article>
+            );
           })}
         </main>
       </div>
