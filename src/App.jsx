@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
-const STORAGE_KEY = 'fe-react-interview-quiz-v5';
+const STORAGE_KEY = 'fe-react-interview-quiz-v6-no-dedupe';
 
 const AREAS = [
   { id: 'all', label: 'Tất cả', icon: '✨' },
@@ -28,7 +28,6 @@ const WRONG_BY_AREA = {
 };
 
 const RAW_QUESTIONS = [
-  // HTML / CSS
   ['html-css','HTML','Cơ bản','Semantic HTML nên hiểu thế nào trong phỏng vấn FE?','Dùng thẻ đúng ý nghĩa nội dung như header, nav, main, section, article, footer để browser, SEO và assistive tech hiểu cấu trúc trang','<main><article><h1>Tiêu đề</h1></article></main>','MDN HTML / Accessibility'],
   ['html-css','HTML','Cơ bản','Vì sao placeholder không thay thế label trong form?','Placeholder không phải accessible name ổn định, biến mất khi nhập và gây UX/accessibility kém; input nên có label liên kết htmlFor/id','<label htmlFor="email">Email</label><input id="email" />','MDN Forms'],
   ['html-css','HTML','Thực tế','Icon button chỉ có hình thùng rác nên làm thế nào?','Dùng button thật và cung cấp accessible name như aria-label để screen reader hiểu hành động','<button aria-label="Xóa người dùng">🗑</button>','MDN Accessibility'],
@@ -47,7 +46,6 @@ const RAW_QUESTIONS = [
   ['html-css','CSS','Thực tế','Mobile-first CSS là gì?','Viết style mặc định cho màn nhỏ trước, rồi dùng min-width media query để nâng layout cho màn lớn','@media (min-width:768px){.grid{grid-template-columns:repeat(3,1fr)}}','MDN Responsive Design'],
   ['html-css','CSS','Thực tế','CSS variables dùng để làm gì?','Lưu design tokens như color/spacing/radius và có thể thay đổi theo theme/scope/runtime',':root{--primary:#2563eb}.btn{background:var(--primary)}','MDN Custom Properties'],
 
-  // JavaScript / TypeScript
   ['js-ts','JavaScript','Cơ bản','Primitive type và reference type khác nhau thế nào?','Primitive copy theo value; object/array/function copy theo reference, nên mutate object có thể ảnh hưởng nơi khác','const b = a; b.name = "B" có thể đổi a.name nếu a là object','MDN JS Data Types'],
   ['js-ts','JavaScript','Cơ bản','== và === khác nhau thế nào?','== ép kiểu ngầm; === so sánh cả value và type nên thường an toàn hơn trong logic quan trọng','0 == false nhưng 0 !== false','MDN Equality'],
   ['js-ts','JavaScript','Cơ bản','Truthy/falsy cần chú ý case nào trong UI?','0, "", false là falsy nhưng có thể là giá trị hợp lệ như count=0, discount=0; cần check nullish nếu chỉ loại null/undefined','count != null thay vì if(count)','MDN Boolean'],
@@ -76,7 +74,6 @@ const RAW_QUESTIONS = [
   ['js-ts','TypeScript React','Thực tế','children trong React TypeScript nên type gì?','Thường dùng React.ReactNode vì children có thể là string, number, element, null hoặc array','type Props={children:React.ReactNode}','React + TS'],
   ['js-ts','TypeScript React','Thực tế','onChange input nên type event thế nào?','React.ChangeEvent<HTMLInputElement>, dùng e.currentTarget.value để lấy value đã type tốt','function onChange(e: React.ChangeEvent<HTMLInputElement>){}','React + TS'],
 
-  // React core / hooks / lifecycle
   ['react','React Core','Cơ bản','Component trong React nên hiểu là gì?','Function/class nhận input là props và trả React element mô tả UI; render nên pure theo props/state','function UserCard({user}){return <div>{user.name}</div>}','React Docs'],
   ['react','React Core','Cơ bản','Props và state giống và khác nhau thế nào?','Props là dữ liệu parent truyền xuống, readonly với child; state là dữ liệu nội bộ thay đổi qua setter và gây render lại','<UserCard user={user}/>; const [open,setOpen]=useState(false)','React Docs'],
   ['react','React Core','Cơ bản','Vì sao không nên mutate state trực tiếp?','React dựa vào reference để nhận biết thay đổi; mutate trực tiếp dễ không render hoặc render sai','setUser(prev=>({...prev,name:"An"}))','React Docs'],
@@ -133,7 +130,6 @@ const RAW_QUESTIONS = [
   ['react','React Lifecycle','Nâng cao','shouldComponentUpdate dùng để làm gì?','Quyết định class component có cần render lại theo next props/state; tương tự ý tưởng React.memo ở function component','shouldComponentUpdate(nextProps){return nextProps.id!==this.props.id}','React Docs'],
   ['react','React Lifecycle','Nâng cao','getDerivedStateFromProps/sync props vào state có nên dùng thường xuyên không?','Không, dễ tạo duplicate state và lệch dữ liệu; chỉ dùng case hiếm có lý do rõ','Không copy props.userName vào state chỉ để render','React Docs'],
 
-  // State management
   ['state','State Management','Cơ bản','Nguyên tắc đầu tiên khi đặt state ở đâu là gì?','Đặt state gần nơi dùng nhất; chỉ nâng lên hoặc global hóa khi nhiều component thật sự cần chia sẻ','Modal open trong một page để local/page state','React Docs'],
   ['state','State Management','Cơ bản','Local, lifted, global, URL và server state khác nhau thế nào?','Local trong component; lifted share gần; global share xa; URL share/refresh/bookmark; server state là remote data cần cache/refetch','modalOpen local, filter URL, productList server state','State Architecture'],
   ['state','State Management','Cơ bản','Client state và server state khác nhau quan trọng nhất ở đâu?','Client state do UI/app sở hữu; server state thuộc remote server, async, có stale/cache/refetch/sync vấn đề','theme là client state, users list là server state','TanStack Query Docs'],
@@ -176,7 +172,6 @@ const RAW_QUESTIONS = [
   ['state','State Management','Nâng cao','Optimistic UI cần chuẩn bị gì?','Snapshot data cũ, update tạm UI/cache, rollback onError và invalidate/refetch khi settled','Like count tăng ngay, fail thì rollback','Optimistic Updates'],
   ['state','State Management','Nâng cao','State machine nên dùng cho flow nào?','Flow nhiều trạng thái/transition rõ như checkout, upload, payment, onboarding, call video','idle → uploading → success/error','State Machines'],
 
-  // API / Router / Form / Test / Rendering / Git
   ['api-router','Axios','Cơ bản','Vì sao nên tạo axiosClient riêng?','Centralize baseURL, timeout, headers, token, interceptors, error handling thay vì lặp ở component','const api = axios.create({baseURL, timeout:10000})','Axios Docs'],
   ['api-router','Axios','Thực tế','Request interceptor thường dùng làm gì?','Gắn token/language/request id trước khi gửi request; không gọi React hooks trong interceptor','config.headers.Authorization = `Bearer ${token}`','Axios Docs'],
   ['api-router','Axios','Thực tế','Nhiều request cùng bị 401 thì refresh token flow cần chú ý gì?','Dùng isRefreshing/queue để chỉ refresh một lần rồi retry requests pending, tránh loop/race','_retry flag + pending queue','Axios Docs'],
@@ -221,30 +216,6 @@ const RAW_QUESTIONS = [
   ['project','Interview','Thực tế','Khi kể feature khó nhất từng làm nên nói cấu trúc nào?','Bối cảnh → vấn đề → cách xử lý → trade-off → kết quả','Nói rõ impact thay vì chỉ liệt kê thư viện','Interview Patterns'],
 ];
 
-function normalizeText(text) {
-  return String(text || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/đ/g, 'd')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
-
-function semanticKey(question) {
-  const t = normalizeText(question.topic);
-  const q = normalizeText(question.question);
-  if (t.includes('git') && q.includes('fetch') && q.includes('pull')) return 'git:fetch-vs-pull';
-  if (t.includes('git') && q.includes('merge') && q.includes('rebase')) return 'git:merge-vs-rebase';
-  if (t.includes('git') && q.includes('reset') && q.includes('revert')) return 'git:reset-vs-revert';
-  if (t.includes('react') && q.includes('props') && q.includes('state')) return 'react:props-vs-state';
-  if (t.includes('react') && q.includes('controlled') && q.includes('uncontrolled')) return 'react:controlled-vs-uncontrolled';
-  if (t.includes('react') && q.includes('usememo') && q.includes('usecallback')) return 'react:usememo-vs-usecallback';
-  if (t.includes('react') && q.includes('key') && q.includes('index')) return 'react:index-key-risk';
-  if (t.includes('tanstack query') && q.includes('querykey')) return 'query:query-key';
-  return `${t}:${q}`;
-}
-
 function getQuestionArea(topic) {
   const t = topic.toLowerCase();
   if (t.includes('html') || t.includes('css') || t.includes('browser')) return 'html-css';
@@ -279,19 +250,9 @@ function makeQuestion(row, index) {
   };
 }
 
-function dedupeQuestions(questions) {
-  const map = new Map();
-  for (const q of questions) {
-    const key = semanticKey(q);
-    const old = map.get(key);
-    const score = q.explanation.length + q.example.length + (q.level === 'Nâng cao' ? 40 : q.level === 'Thực tế' ? 20 : 0);
-    const oldScore = old ? old.explanation.length + old.example.length + (old.level === 'Nâng cao' ? 40 : old.level === 'Thực tế' ? 20 : 0) : -1;
-    if (!old || score > oldScore) map.set(key, q);
-  }
-  return Array.from(map.values()).map((q, index) => ({ ...q, id: index + 1 }));
-}
-
-const QUESTIONS = dedupeQuestions(RAW_QUESTIONS.map(makeQuestion));
+// QUAN TRỌNG: Không dedupe tự động nữa. Dedupe runtime từng làm giảm số câu hỏi khi sửa UI.
+// Từ giờ giữ 100% RAW_QUESTIONS, câu trùng sẽ sửa thủ công bằng nội dung khác trọng tâm.
+const QUESTIONS = RAW_QUESTIONS.map(makeQuestion).map((q, index) => ({ ...q, id: index + 1 }));
 const alphabet = ['A', 'B', 'C', 'D'];
 
 function levelClass(level) {
@@ -434,7 +395,7 @@ export default function FEReactInterviewQuiz() {
           <section className="mb-5 rounded-3xl border border-white/10 bg-gradient-to-br from-blue-600/20 via-violet-600/10 to-cyan-500/10 p-5 shadow-2xl shadow-black/20 md:p-7">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <div className="mb-2 inline-flex rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-200">Đã lọc trùng semantic, không lặp kiểu fetch vs pull 2 lần</div>
+                <div className="mb-2 inline-flex rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-200">Đã tắt dedupe tự động: giữ 100% câu hỏi gốc</div>
                 <h1 className="text-2xl font-black md:text-4xl">Ôn phỏng vấn FE React 2.5+ năm</h1>
                 <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300">Tập trung vào câu hỏi nhà tuyển dụng hay hỏi: nền tảng HTML/CSS/JS/TS, React lifecycle/hooks/performance, Redux Toolkit, Zustand, TanStack Query/Router, rendering, Git, build và case dự án thực tế.</p>
               </div>
