@@ -1,1 +1,1 @@
-export { default } from './AppTheoryFull.jsx';
+export { default } from './AppTheoryUnified.jsx';
